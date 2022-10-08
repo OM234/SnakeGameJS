@@ -2,24 +2,24 @@ import { useEffect, useRef } from "react";
 import data from "../data/data";
 
 let tickNum = 0;
-const seperation =20;
-const speed = 1;
+const seperation = 15;
+const speed = 8;
 let lastMoveEntered = '';
 
 window.addEventListener('keydown', (event) => {
     event.preventDefault();
     switch(event.key) {
         case 'ArrowUp':
-            lastMoveEntered = 'u';
+            lastMoveEntered = lastMoveEntered === 'd' ? 'd' : 'u';
             break;
         case 'ArrowDown':
-            lastMoveEntered = 'd';
+            lastMoveEntered = lastMoveEntered === 'u' ? 'u' : 'd';
             break;
         case 'ArrowLeft':
-            lastMoveEntered = 'l';
+            lastMoveEntered = lastMoveEntered === 'r' ? 'r' : 'l';
             break;
         case 'ArrowRight':
-            lastMoveEntered = 'r';
+            lastMoveEntered = lastMoveEntered === 'l' ? 'l' : 'r';
             break;
     }
 });
@@ -38,7 +38,6 @@ const Canvas = () => {
     const requestIdRef = useRef(null);
     const snakeRef = useRef(getFakeCoordinates());
     const moveRef = useRef(['l']);
-    const lastMoveRef = useRef(['l']);
     const handleKeyDown = (e) => {
         e.preventDefault();
         console.log('press');
@@ -48,7 +47,6 @@ const Canvas = () => {
         tickNum++;
         const snake = snakeRef.current;
         const move = moveRef.current;
-        const lastMove = lastMoveRef.current;
         
         // if(tickNum%30 === 0) {
         //     snakeRef.current.push({x: data.height/2 + seperation, y: data.width/2})
@@ -60,79 +58,78 @@ const Canvas = () => {
             case 'l':
                 move[0] = 'l';
                 snake[0].x -= speed;
-                lastMove[0] = 'l';
                 break;
             case 'r':
                 move[0] = 'r';
                 snake[0].x += speed;
-                lastMove[0] = 'r';
                 break;
             case 'u':
                 move[0] = 'u';
                 snake[0].y -= speed;
-                lastMove[0] = 'u';
                 break;
             case 'd':
                 move[0] = 'd';
                 snake[0].y += speed;
-                lastMove[0] = 'd';
                 break;
         }
 
         for(let i = 1; i < snake.length; i++) {
-            // if(directionChanged(move[i], lastMove[0])) {
-            //     console.log(`changed at ${i} from ${lastMove[0]} to ${move[i]}}`)
-            // }
             const distanceX = snake[i-1].x - snake[i].x;
             const distanceY = snake[i-1].y - snake[i].y;
-            if(lastMove[0] === 'l' || lastMove[0] === 'r') {
-                const moveX = distanceX >= 0 ? distanceX-seperation : distanceX+seperation;
-                if(Math.abs(distanceX) >= seperation) {
-                    snake[i].x += moveX;
+            switch(move[i-1]) {
+                case 'l':
+                case 'r':
                     snake[i].y += distanceY;
-                    const prevMove = move[i];
-                    if(moveX > 0) {
-                        move[i] = lastMove[0];
-                    } else {
-                        move[i] = lastMove[0];
+                    if(Math.abs(distanceX) > seperation) {
+                        const moveX = distanceX >= 0 ? distanceX-seperation : distanceX+seperation;
+                        snake[i].x += moveX;
                     }
-                    lastMove[0] = prevMove;
-                } else {
-                    lastMove[0] = move[i];
-                }
-            }
-            else if(lastMove[0] === 'u' || lastMove[0] === 'd') {
-                const moveY = distanceY >= 0 ? distanceY-seperation : distanceY+seperation;
-                if(Math.abs(distanceY) >= seperation) {
-                    snake[i].y += moveY;
+                    move[i] = getMove(distanceY, distanceX);
+                    break;
+                case 'u':
+                case 'd':
                     snake[i].x += distanceX;
-                    const prevMove = move[i];
-                    if(moveY > 0) {
-                        move[i] = lastMove[0];
-                    } else {
-                        move[i] = lastMove[0];
+                    if(Math.abs(distanceY) > seperation) {
+                        const moveY = distanceY >= 0 ? distanceY-seperation : distanceY+seperation;
+                        snake[i].y += moveY;
                     }
-                    lastMove[0] = prevMove;
-                } else {
-                    lastMove[0] = move[i];
-                }
+                    move[i] = getMove(distanceY, distanceX);
+                    break;
+
             }
-            console.log(snake);
         }
     }
 
-    const directionChanged = (curr, last) => {
-        if(curr === 'u' || curr === 'd') {
-            if(last === 'l' || last === 'r') {
-                return true;
+    const getMove = (distanceY, distanceX) => {
+        if(Math.abs(distanceX) >= seperation) {
+            if(distanceX > 0) {
+                return 'r';
+            } else {
+                return 'l';
             }
-            return false;
         }
-        if(last === 'u' || last === 'd') {
-            return true;
+        if(Math.abs(distanceY) >= seperation) {
+            if (distanceY > 0) {
+                return 'd';
+            } else {
+                return 'u';
+            }
         }
-        return false;
+        console.log('nothing');
     }
+
+    // const directionChanged = (curr, last) => {
+    //     if(curr === 'u' || curr === 'd') {
+    //         if(last === 'l' || last === 'r') {
+    //             return true;
+    //         }
+    //         return false;
+    //     }
+    //     if(last === 'u' || last === 'd') {
+    //         return true;
+    //     }
+    //     return false;
+    // }
 
     const renderFrame = () => {
         const ctx = canvasRef.current.getContext("2d");
