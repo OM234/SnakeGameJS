@@ -26,7 +26,7 @@ window.addEventListener('keydown', (event) => {
 
 const getFakeCoordinates = () => {
     const arr = [];
-    for(let i = 0; i < 20; i++) {
+    for(let i = 0; i < 1; i++) {
         arr.push({x: data.height/2 + i*seperation, y: data.width/2});
     }
     return arr;
