@@ -2,24 +2,24 @@ import { useEffect, useRef } from "react";
 import data from "../data/data";
 
 const seperation = 15;
-const speed = 10;
+const speed = 11;
 let lastMoveEntered = '';
-// let tickNum = 0;
-// let lost = false;
+let didScore = false;
 
-const getFakeCoordinates = () => {
-    const arr = [];
-    for(let i = 0; i < 40; i++) {
-        arr.push({x: data.height/2 + i*seperation, y: data.width/2});
-    }
-    return arr;
-}
+// const getFakeCoordinates = () => {
+//     const arr = [];
+//     for (let i = 0; i < 1; i++) {
+//         arr.push({ x: data.height / 2 + i * seperation, y: data.width / 2 });
+//     }
+//     return arr;
+// } 
 
 const Canvas = () => {
     const canvasRef = useRef(null);
     const requestIdRef = useRef(null);
-    const snakeRef = useRef(getFakeCoordinates());
+    const snakeRef = useRef([{ x: data.height / 2, y: data.width / 2 }]);
     const moveRef = useRef(['l']);
+    const foodRef = useRef({x: data.width/3, y:data.height/3});
 
     useEffect(() => {
         requestIdRef.current = requestAnimationFrame(tick);
@@ -29,7 +29,7 @@ const Canvas = () => {
     });
 
     const tick = () => {
-        if(!canvasRef.current) {
+        if (!canvasRef.current) {
             return;
         }
         renderFrame();
@@ -38,27 +38,88 @@ const Canvas = () => {
 
     const renderFrame = () => {
         const ctx = canvasRef.current.getContext("2d");
-        snakeRef.current.forEach(snakeNode => ctx.clearRect(snakeNode.x-10, snakeNode.y-10, 20, 20));
+        snakeRef.current.forEach(snakeNode => ctx.clearRect(snakeNode.x - 10, snakeNode.y - 10, 20, 20));
+        ctx.clearRect(foodRef.current.x - 10, foodRef.current.y - 10, 20, 20);
+        updateFood();
         updateSnake();
+        renderSnake(ctx);
+        renderFood(ctx);
+    }
+
+    const renderSnake = (ctx) => {
         //const colors = ['red', 'orange', 'yellow', 'green', 'blue', 'purple']
         let i = snakeRef.current.length;
-        while(i > 0) {
+        while (i > 0) {
             i--;
             ctx.beginPath();
-            ctx.arc(snakeRef.current[i].x, snakeRef.current[i].y, data.snakeRadius, 0, Math.PI*2);
-                //ctx.fillStyle = colors[i % colors.length];    
-                ctx.fillStyle = i == 0 ? 'red' : 'black'
-                ctx.fill();
+            ctx.arc(snakeRef.current[i].x, snakeRef.current[i].y, data.snakeRadius, 0, Math.PI * 2);
+            //ctx.fillStyle = colors[i % colors.length];    
+            ctx.fillStyle = i == 0 ? 'red' : 'black';
+            ctx.fill();
         }
     }
 
+    const renderFood = (ctx) => {
+        ctx.beginPath();
+        ctx.fillStyle = 'orange';
+        ctx.arc(foodRef.current.x, foodRef.current.y, data.snakeRadius, 0, Math.PI * 2);
+        ctx.fill();
+        //ctx.fillRect(foodRef.current.x, foodRef.current.y, data.snakeRadius*2, data.snakeRadius*2);
+    }
+    
+    const updateFood = () => {
+        const { xA, xB, yA, yB } = getHeadAndFoodCoordinates();
+        const { xAL, xAR, yAU, yAD, xBL, xBR, yBU, yBD }
+            = getNodesBoundaries(xA, xB, yA, yB);
+        if(didCollideWith(xAL, xAR, yAU, yAD, xBL, xBR, yBU, yBD )) {
+            onCollidedWithFood();
+        }
+    }
+
+    const getHeadAndFoodCoordinates = () => {
+        const xA = snakeRef.current[0].x;
+        const yA = snakeRef.current[0].y;
+        const xB = foodRef.current.x;
+        const yB = foodRef.current.y;
+        return { xA, xB, yA, yB };
+    }
+
+    const onCollidedWithFood = () => {
+        didScore = true;
+        let foodX, foodY;
+        do {
+            const border = 50;
+            foodX = Math.floor(Math.random() * (data.width -2*border + 1 ) + border);
+            foodY = Math.floor(Math.random() * (data.height -2*border + 1) + border );
+        } while (!foodCanBePlacedHere(foodX, foodY));
+        foodRef.current = { x: foodX, y: foodY };
+    }
+
+    const foodCanBePlacedHere = (foodX, foodY) => {
+        return snakeRef.current.every(node => {
+            const snakeX = node.x;
+            const snakeY = node.y;
+            const { xAL, xAR, yAU, yAD, xBL, xBR, yBU, yBD }
+                = getNodesBoundaries(foodX, snakeX, foodY, snakeY);
+            return !didCollideWith(xAL, xAR, yAU, yAD, xBL, xBR, yBU, yBD)
+        });
+    }
+
     const updateSnake = () => {
-        if(didLose()) {
+        if (didLose()) {
             alert('you lost');
         }
-        //tickNum++;
+        onScoring();
         moveHead();
         moveBody();
+    }
+
+    const onScoring = () => {
+        if(didScore) {
+            //for(let i = 0; i < 5; i++)
+            snakeRef.current.push({x: -5, y: -5});
+            didScore = false;
+        }
     }
 
     const moveHead = () => {
@@ -118,14 +179,14 @@ const Canvas = () => {
     }
 
     const getMove = (distanceY, distanceX) => {
-        if(Math.abs(distanceX) >= seperation) {
-            if(distanceX > 0) {
+        if (Math.abs(distanceX) >= seperation) {
+            if (distanceX > 0) {
                 return 'r';
             } else {
                 return 'l';
             }
         }
-        if(Math.abs(distanceY) >= seperation) {
+        if (Math.abs(distanceY) >= seperation) {
             if (distanceY > 0) {
                 return 'd';
             } else {
@@ -137,46 +198,60 @@ const Canvas = () => {
     const didLose = () => {
         const headX = snakeRef.current[0]['x'];
         const headY = snakeRef.current[0]['y'];
+
         //TODO: make i smaller, closer to 2
-        for(let i = 4; i < snakeRef.current.length; i++) {
+        for (let i = 4; i < snakeRef.current.length; i++) {
             const currX = snakeRef.current[i]['x'];
             const currY = snakeRef.current[i]['y'];
-            if(didCollide(headX, headY, currX, currY)) {
+            if (didCollide(headX, headY, currX, currY)) {
                 return true;
             }
         }
+
+        const { xAL, xAR, yAU, yAD } = getNodeBoundaries(snakeRef.current[0].x, snakeRef.current[0].y);
+        if(didCollideWithWall(xAL, xAR, yAU, yAD)) {
+            return true;
+        }
+
         return false;
     }
 
     //It is assumed that xA, xB refer to head node
     const didCollide = (xA, yA, xB, yB) => {
-        const { xBL, xAL, xAR, xBR, yBU, yAU, yAD, yBD } 
-            = getNodeBoundaries(xA, xB, yA, yB);
+        const { xAL, xAR, yAU, yAD, xBL, xBR, yBU, yBD }
+            = getNodesBoundaries(xA, xB, yA, yB);
 
-        return didCollideWithSelf(xBL, xAL, xAR, xBR, yBU, yAU, yAD, yBD) || 
-            didCollideWithWall(xAL, xAR, yAU, yAD);
+        return didCollideWith(xAL, xAR, yAU, yAD, xBL, xBR, yBU, yBD )
     }
 
     const didCollideWithWall = (xAL, xAR, yAU, yAD) => {
-        const tolerance = 5;
-        return xAL + tolerance < 0 
-        || xAR - tolerance > data.width 
-        || yAU + tolerance < 0 
-        || yAD - tolerance > data.height;
+        const tolerance = 0;
+        return xAL + tolerance < 0
+            || xAR - tolerance > data.width
+            || yAU + tolerance < 0
+            || yAD - tolerance > data.height;
     }
 
-    const didCollideWithSelf = (xBL, xAL, xAR, xBR, yBU, yAU, yAD, yBD) => {
+    const didCollideWith = (xAL, xAR, yAU, yAD, xBL, xBR, yBU, yBD) => {
         const overlappedX = (xBL >= xAL && xBL <= xAR) || (xBR >= xAL && xBR <= xAR);
-        if(overlappedX) {
+        if (overlappedX) {
             const overLappedY = (yBU >= yAU && yBU <= yAD) || (yBD >= yAU && yBD <= yAD);
-            if(overLappedY) {
+            if (overLappedY) {
                 return true;
             }
         }
         return false;
     }
 
-    const getNodeBoundaries = (xA, xB, yA, yB) => {
+    const getNodeBoundaries = (xA, yA) => {
+        const xAL = xA - data.snakeRadius;
+        const xAR = xA + data.snakeRadius;
+        const yAU = yA - data.snakeRadius;
+        const yAD = yA + data.snakeRadius;
+        return { xAL, xAR, yAU, yAD }
+    }
+
+    const getNodesBoundaries = (xA, xB, yA, yB) => {
         const xAL = xA - data.snakeRadius;
         const xAR = xA + data.snakeRadius;
         const xBL = xB - data.snakeRadius;
@@ -185,22 +260,22 @@ const Canvas = () => {
         const yAD = yA + data.snakeRadius;
         const yBU = yB - data.snakeRadius;
         const yBD = yB + data.snakeRadius;
-        return { xBL, xAL, xAR, xBR, yBU, yAU, yAD, yBD };
+        return { xAL, xAR, yAU, yAD, xBL, xBR, yBU, yBD }
     }
 
     return (
         <div>
-        <h1 style={{textAlign: 'center'}}>Snake Game</h1>
-        <h2 style={{textAlign: 'center'}}>Version 1.0</h2>
-        <h2 style={{textAlign: 'center'}}>Score: {snakeRef.current.length}</h2>
-        <canvas ref={canvasRef} height={data.height} width={data.width} style={{ border: '1px solid', background:'AliceBlue', borderRadius: '5px', display: 'table', margin: '50px auto' }}/>
+            <h1 style={{ textAlign: 'center' }}>Snake Game</h1>
+            <h2 style={{ textAlign: 'center' }}>Version 1.0</h2>
+            <h2 style={{ textAlign: 'center' }}>Score: {snakeRef.current.length}</h2>
+            <canvas ref={canvasRef} height={data.height} width={data.width} style={{ border: '1px solid', background: 'AliceBlue', borderRadius: '5px', display: 'table', margin: '50px auto' }} />
         </div>
     );
 }
 
 window.addEventListener('keydown', (event) => {
     event.preventDefault();
-    switch(event.key) {
+    switch (event.key) {
         case 'ArrowUp':
             lastMoveEntered = lastMoveEntered === 'd' ? 'd' : 'u';
             break;

@@ -1,5 +1,5 @@
-const width = 750;
-const height = 750;
+const width = 1200;
+const height = 1200;
 const numCellsWide = 30;
 const numCellsHigh = 30;
 const snakeRadius = 10;
